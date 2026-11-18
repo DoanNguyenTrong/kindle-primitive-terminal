@@ -268,6 +268,14 @@ impl Panel {
 impl Panel {
 }
 
+impl Panel {
+    /// The framebuffer's own rotation (0 upright, 2 upside down, 1 and 3 landscape). While the framework runs it can
+    /// rotate the framebuffer itself, so the picture has to take it into account.
+    pub fn turn(&self) -> u32 {
+        var_info(self.file.as_raw_fd()).map_or(0, |v| v.rotate)
+    }
+}
+
 impl Drop for Panel {
     fn drop(&mut self) {
         // SAFETY: unmapping the mapping made in `open`.

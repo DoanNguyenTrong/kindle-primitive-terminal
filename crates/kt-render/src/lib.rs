@@ -2,7 +2,7 @@
 //! and versions as Primitive Browser and Launcher). Chrome and text are pure black on pure white after
 //! `solidify`, so a page change does not flash; the keyboard uses the shared look (`primitive-keyboard`).
 
-use kt_core::{BarKey, Rect, Rotation, Terminal, PROMPT};
+use kt_core::{BarKey, Rect, Terminal, PROMPT};
 use parley::{FontContext, FontWeight, LayoutContext, PositionedLayoutItem, StyleProperty};
 use primitive_keyboard::{style, KeyDef};
 use vello_cpu::{
@@ -197,10 +197,7 @@ impl Renderer {
         self.ctx.render(self.pixmap.as_mut(), &mut self.resources);
         let mut out: Vec<u8> = self.pixmap.data_as_u8_slice().iter().step_by(4).copied().collect();
         solidify(&mut out);
-        // Turned upside down, the whole picture is rotated 180 degrees: row-major, that is the buffer reversed.
-        if t.rotation == Rotation::UpsideDown {
-            out.reverse();
-        }
+        // Drawn upright. The device turns the picture when it is flipped (see the terminal's main loop).
         out
     }
 

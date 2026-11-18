@@ -121,6 +121,29 @@ fn orientation_loop(tx: Sender<Ev>, start: Rotation) {
     }
 }
 
+/// Whether the picture is drawn turned: the Kindle's turn, combined with the framebuffer's own rotation, as the
+/// launcher does. Upright on both, or turned on both, shows upright.
+fn picture_flip(t: &Terminal, panel: &eink::Panel) -> bool {
+    (t.rotation.turn() + panel.turn()) % 4 == 2
+}
+
+/// The turn the picture is shown in: the framebuffer's rotation, plus the flip the picture was drawn with. Touch
+/// must follow it, because the touch panel is not turned by the framework (the picture is).
+fn displayed_turn(t: &Terminal, panel: &eink::Panel) -> u32 {
+    let flip = if picture_flip(t, panel) { 2 } else { 0 };
+    (panel.turn() + flip) % 4
+}
+
+/// The frame for the panel: the terminal's picture, turned 180 degrees when the picture is flipped (the buffer is
+/// row-major, so turning it is reversing it).
+fn frame(renderer: &mut Renderer, t: &Terminal, panel: &eink::Panel) -> Vec<u8> {
+    let mut out = renderer.draw(t);
+    if picture_flip(t, panel) {
+        out.reverse();
+    }
+    out
+}
+
 /// The smallest rectangle (x, y, w, h) where two frames differ, or None when they are the same.
 fn changed_region(old: &[u8], new: &[u8], width: u32) -> Option<(u32, u32, u32, u32)> {
     let height = new.len() as u32 / width;
@@ -207,16 +230,20 @@ fn main() {
         None => log("no page buttons found"),
     }
 
-    input::TURN.store(term.rotation.turn(), Ordering::Relaxed);
+    // The screen starts in the Kindle's turn (the framework's property), not in upright.
+    if let Some(turn) = kindle_turn(accel_value_path().as_ref()) {
+        term.rotation = turn;
+    }
+    input::TURN.store(displayed_turn(&term, &panel), Ordering::Relaxed);
     {
         let tx = tx.clone();
         let start = term.rotation;
         thread::spawn(move || orientation_loop(tx, start));
     }
 
-    let mut previous = renderer.draw(&term);
+    let mut previous = frame(&mut renderer, &term, &panel);
     let _ = panel.draw(W, (0, 0, W, H), &previous, eink::WAVE_GC16, true);
-    log("ready");
+    log(&format!("ready: framebuffer turn {}, picture flipped {}, touch turn {}", panel.turn(), picture_flip(&term, &panel), displayed_turn(&term, &panel)));
 
     while let Ok(ev) = rx.recv() {
         let turned_before = term.rotation;
@@ -244,15 +271,20 @@ fn main() {
             Action::Redraw | Action::None => {}
         }
         let turned = term.rotation != turned_before;
+        let flip = picture_flip(&term, &panel);
         if turned {
-            // The touch mapping follows the turn, and the whole picture is drawn again (the panel turns it).
-            input::TURN.store(term.rotation.turn(), Ordering::Relaxed);
-            log(&format!("turned: {:?}", term.rotation));
+            // The touch mapping follows the turn, and the whole picture is drawn again.
+            input::TURN.store(displayed_turn(&term, &panel), Ordering::Relaxed);
+            log(&format!("turned: {:?}, framebuffer turn {}, picture flipped {flip}, touch turn {}", term.rotation, panel.turn(), displayed_turn(&term, &panel)));
         }
         if turned || redraw {
-            let next = renderer.draw(&term);
+            let next = frame(&mut renderer, &term, &panel);
             if turned {
-                let _ = panel.draw(W, (0, 0, W, H), &next, eink::WAVE_GC16, true);
+                match panel.draw(W, (0, 0, W, H), &next, eink::WAVE_GC16, true) {
+                    Ok(true) => log("turned picture drawn"),
+                    Ok(false) => log("turned picture: the framebuffer is not in a drawable state"),
+                    Err(e) => log(&format!("turned picture: {e}")),
+                }
             } else if let Some((x, y, w, h)) = changed_region(&previous, &next, W) {
                 if let Err(e) = panel.draw(W, (x, y, w, h), &next, eink::WAVE_GL16, false) {
                     log(&format!("draw failed: {e}"));
