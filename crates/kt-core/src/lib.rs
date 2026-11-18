@@ -97,6 +97,8 @@ pub struct Terminal {
     pub rotation: Rotation,
     /// Ctrl is on: the next letter is sent as a control character.
     pub ctrl: bool,
+    /// The key under the finger, drawn in the on look until its action runs (see `press_feedback`).
+    pub pressed: Option<Rect>,
     /// Commands run, oldest first, and the one Up and Down show (None: the command being typed).
     pub history: Vec<String>,
     history_pos: Option<usize>,
@@ -113,6 +115,7 @@ impl Terminal {
             scroll: 0,
             rotation: Rotation::Upright,
             ctrl: false,
+            pressed: None,
             history: Vec::new(),
             history_pos: None,
         }
@@ -223,7 +226,23 @@ impl Terminal {
     // ----- input -----
 
     /// Handle a device input.
+    /// A tap on a key (the keyboard or the key bar) marks the key as pressed, so the driver can show it before the
+    /// key's action runs. Returns whether a key was marked; `handle` clears the mark.
+    pub fn press_feedback(&mut self, input: Input) -> bool {
+        let Input::Tap(x, y) = input else { return false };
+        let bar = self.bar_keys().into_iter().find(|(_, r)| r.contains(x, y)).map(|(_, r)| r);
+        let keyboard = self.keys().into_iter().find(|(_, r)| r.contains(x, y)).map(|(_, r)| r);
+        match bar.or(keyboard) {
+            Some(r) => {
+                self.pressed = Some(r);
+                true
+            }
+            None => false,
+        }
+    }
+
     pub fn handle(&mut self, input: Input) -> Action {
+        self.pressed = None;
         match input {
             Input::Back => Action::Close,
             Input::Tap(x, y) => {
@@ -482,6 +501,19 @@ mod tests {
         assert_eq!(t.command.string(), "echo b");
         t.handle(Input::Tap(dx, dy));
         assert!(t.command.string().is_empty(), "past the newest, the line is empty again");
+    }
+
+    #[test]
+    fn a_tap_marks_its_key_pressed_until_the_action_runs() {
+        let mut t = term();
+        let (x, y) = centre_of(&t, Key::Char('q'));
+        assert!(t.press_feedback(Input::Tap(x, y)));
+        assert!(t.pressed.is_some());
+        t.handle(Input::Tap(x, y));
+        assert!(t.pressed.is_none(), "the action clears the mark");
+        let (x, y) = centre_bar(&t, BarKey::Up);
+        assert!(t.press_feedback(Input::Tap(x, y)), "the key bar marks too");
+        assert!(!t.press_feedback(Input::Tap(600.0, 300.0)), "the output marks nothing");
     }
 
     #[test]

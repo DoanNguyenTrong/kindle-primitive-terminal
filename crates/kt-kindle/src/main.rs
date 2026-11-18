@@ -252,7 +252,17 @@ fn main() {
                 term.feed(&bytes);
                 Action::Redraw
             }
-            Ev::Input(input) => term.handle(input),
+            Ev::Input(input) => {
+                // A key is drawn as pressed before its action runs: the tap is seen at once.
+                if term.press_feedback(input) {
+                    let next = frame(&mut renderer, &term, &panel);
+                    if let Some((x, y, w, h)) = changed_region(&previous, &next, W) {
+                        let _ = panel.draw(W, (x, y, w, h), &next, eink::WAVE_DU, false);
+                    }
+                    previous = next;
+                }
+                term.handle(input)
+            }
             Ev::Turn(turn) => {
                 term.rotation = turn;
                 Action::Redraw

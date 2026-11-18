@@ -4,7 +4,7 @@
 
 use kt_core::{BarKey, Rect, Terminal, PROMPT};
 use parley::{FontContext, FontWeight, LayoutContext, PositionedLayoutItem, StyleProperty};
-use primitive_keyboard::{style, KeyDef};
+use primitive_keyboard::{style, Key, KeyDef};
 use vello_cpu::{
     kurbo::{self, Affine, Shape},
     peniko::Color,
@@ -267,10 +267,10 @@ impl Renderer {
                 BarKey::Down => ("Down", false),
                 BarKey::Stop => ("Stop", false),
             };
-            let (fill, ink) = if on { (style::INK_GRAY, WHITE) } else { (style::FILL_GRAY, style::INK_GRAY) };
-            let line = if on { style::INK_GRAY } else { style::BORDER_GRAY };
-            self.rounded_frame(r, style::RADIUS as f64, style::BORDER as i32, line, fill);
-            self.text(Text { text: label, x: r.x as f32, y: r.y as f32 + r.h as f32 / 2.0 - 22.0, w: r.w as f32, size: 34.0, bold: true, align: Align::Center, gray: ink });
+            let def = KeyDef { key: Key::Space, label: label.to_string(), width: 1.0, on };
+            let look = primitive_keyboard::look(&def, t.pressed == Some(r));
+            self.rounded_frame(r, style::RADIUS as f64, style::BORDER as i32, look.line, look.fill);
+            self.text(Text { text: label, x: r.x as f32, y: r.y as f32 + r.h as f32 / 2.0 - 22.0, w: r.w as f32, size: 34.0, bold: true, align: Align::Center, gray: look.ink });
         }
     }
 
@@ -278,17 +278,17 @@ impl Renderer {
         let area = t.keyboard_area();
         self.fill(Rect { x: 0, y: area.y, w: area.w, h: style::TOP_LINE as i32 }, style::TOP_LINE_GRAY);
         for (def, r) in t.keys() {
-            self.key(&def, r);
+            let pressed = t.pressed == Some(r);
+            self.key(&def, r, pressed);
         }
     }
 
-    /// One key, in the shared look: the same outline, fill and label sizes as the launcher's keyboard.
-    fn key(&mut self, def: &KeyDef, r: Rect) {
-        let (fill, ink) = if def.on { (style::INK_GRAY, WHITE) } else { (style::FILL_GRAY, style::INK_GRAY) };
-        let line = if def.on { style::INK_GRAY } else { style::BORDER_GRAY };
-        self.rounded_frame(r, style::RADIUS as f64, style::BORDER as i32, line, fill);
+    /// One key, in the keyboard's shared look (`primitive_keyboard::look`): on, or pressed, takes the ink look.
+    fn key(&mut self, def: &KeyDef, r: Rect, pressed: bool) {
+        let look = primitive_keyboard::look(def, pressed);
+        self.rounded_frame(r, style::RADIUS as f64, style::BORDER as i32, look.line, look.fill);
         let size = style::label_size(&def.label) as f32;
-        self.text(Text { text: &def.label, x: r.x as f32, y: r.y as f32 + r.h as f32 / 2.0 - size * 0.7, w: r.w as f32, size, bold: false, align: Align::Center, gray: ink });
+        self.text(Text { text: &def.label, x: r.x as f32, y: r.y as f32 + r.h as f32 / 2.0 - size * 0.7, w: r.w as f32, size, bold: false, align: Align::Center, gray: look.ink });
     }
 }
 
