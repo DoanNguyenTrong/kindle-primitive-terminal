@@ -87,22 +87,31 @@ fn accel_value_path() -> Option<PathBuf> {
     None
 }
 
-/// Follow the Kindle's turn, 4 readings a second. A new turn is sent after it has been read for 800 ms in a row.
-/// Without the accelerometer, the Turn button is the only way to turn the screen.
+/// The Kindle's turn, as the browser reads it: the framework's accelerometer property (`U` upright, `D` upside
+/// down). Without the framework, the accelerometer's own file (the launcher's way). `None` when neither answers.
+fn kindle_turn(sensor: Option<&PathBuf>) -> Option<Rotation> {
+    if let Ok(out) = std::process::Command::new("lipc-get-prop").args(["com.lab126.winmgr", "accelerometer"]).output() {
+        match String::from_utf8_lossy(&out.stdout).trim() {
+            "U" => return Some(Rotation::Upright),
+            "D" => return Some(Rotation::UpsideDown),
+            _ => {}
+        }
+    }
+    let text = std::fs::read_to_string(sensor?).ok()?;
+    let (x, y, z) = parse_accel(&text)?;
+    turn_from_accel(x, y, z)
+}
+
+/// Follow the Kindle's turn, 4 readings a second. A new turn is sent after it has been read for 800 ms in a row,
+/// so a Kindle tilted back and forth does not flip the screen.
 fn orientation_loop(tx: Sender<Ev>, start: Rotation) {
-    let Some(path) = accel_value_path() else {
-        log("accelerometer not found: the Turn button turns the screen");
-        return;
-    };
-    log(&format!("accelerometer: {}", path.display()));
+    let sensor = accel_value_path();
+    log(&format!("turn: framework property, sensor {:?}", sensor.as_ref().map(|p| p.display().to_string())));
     let mut debounce = Debouncer::new(start, 800);
     let began = std::time::Instant::now();
     loop {
         thread::sleep(Duration::from_millis(250));
-        let reading = std::fs::read_to_string(&path)
-            .ok()
-            .and_then(|text| parse_accel(&text))
-            .and_then(|(x, y, z)| turn_from_accel(x, y, z));
+        let reading = kindle_turn(sensor.as_ref());
         let now = began.elapsed().as_millis() as u64;
         if let Some(turn) = debounce.feed(reading, now) {
             if tx.send(Ev::Turn(turn)).is_err() {

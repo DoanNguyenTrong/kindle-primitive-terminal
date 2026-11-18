@@ -6,7 +6,7 @@
 //!   go          run the typed line
 //!   wait MS     show the shell's output for MS milliseconds
 //!   stop        Stop on the key bar (Ctrl-C)
-//!   turn        the Turn button: the screen upside down, or back
+//!   turned       the screen turned upside down (the Kindle's turn): not on the desktop
 //!   ctrl        the Ctrl key on the key bar (the next letter is a control character)
 //!   tap X Y     a tap in device pixels
 //!   swipe DY    a swipe (positive down), from the middle of the output
@@ -98,9 +98,6 @@ fn main() -> io::Result<()> {
                 if term.bar_key(kt_core::BarKey::Stop) == Action::Interrupt {
                     session.interrupt()?;
                 }
-            }
-            "turn" => {
-                term.handle(Input::Tap(term.turn_button().x as f32 + 5.0, term.turn_button().y as f32 + 5.0));
             }
             "ctrl" => {
                 term.bar_key(kt_core::BarKey::Ctrl);

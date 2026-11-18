@@ -2,6 +2,11 @@
 
 Each device build gets a new patch version.
 
+## 0.1.3
+
+- The Turn button is gone. The screen turns with the Kindle, as the browser and the launcher do: the framework's
+  accelerometer property, or the accelerometer itself when the framework is stopped.
+
 ## 0.1.2
 
 - A key bar above the keyboard: Ctrl (the next letter is sent as a control character), Up and Down (past commands),

@@ -206,8 +206,6 @@ impl Renderer {
 
     fn title(&mut self, t: &Terminal) {
         self.text(Text { text: "Terminal", x: 40.0, y: 30.0, w: 600.0, size: 56.0, bold: true, align: Align::Start, gray: BLACK });
-        let turn = t.turn_button();
-        self.button(turn, "Turn", false);
         let back = t.back_button();
         self.button(back, "Back", true);
         let bar = t.title_bar();

@@ -93,7 +93,7 @@ pub struct Terminal {
     pub command: Editor,
     /// How many lines the output is scrolled up from its newest line (0: at the bottom).
     pub scroll: usize,
-    /// Whether the screen is turned upside down. Set by the Turn button, or by the device's accelerometer.
+    /// Whether the screen is turned upside down: the Kindle's turn (auto-rotation, as the browser and the launcher).
     pub rotation: Rotation,
     /// Ctrl is on: the next letter is sent as a control character.
     pub ctrl: bool,
@@ -229,10 +229,6 @@ impl Terminal {
             Input::Tap(x, y) => {
                 if self.back_button().contains(x, y) {
                     return Action::Close;
-                }
-                if self.turn_button().contains(x, y) {
-                    self.rotation = self.rotation.flipped();
-                    return Action::Redraw;
                 }
                 if let Some((key, _)) = self.bar_keys().into_iter().find(|(_, r)| r.contains(x, y)) {
                     return self.bar_key(key);
@@ -431,15 +427,20 @@ mod tests {
     }
 
     #[test]
-    fn back_closes_and_turn_flips_the_screen() {
+    fn back_closes() {
         let mut t = term();
         let b = t.back_button();
         assert_eq!(t.handle(Input::Tap(b.x as f32 + 5.0, b.y as f32 + 5.0)), Action::Close);
         assert_eq!(t.handle(Input::Back), Action::Close);
-        let turn = t.turn_button();
-        assert_eq!(t.handle(Input::Tap(turn.x as f32 + 5.0, turn.y as f32 + 5.0)), Action::Redraw);
-        assert_eq!(t.rotation, Rotation::UpsideDown);
-        t.handle(Input::Tap(turn.x as f32 + 5.0, turn.y as f32 + 5.0));
+    }
+
+    #[test]
+    fn the_screen_turns_only_with_the_kindle() {
+        let mut t = term();
+        let b = t.back_button();
+        // A tap where a Turn button would be does nothing: the turn follows the Kindle.
+        let x = (b.x - 100) as f32;
+        assert_eq!(t.handle(Input::Tap(x, b.y as f32 + 5.0)), Action::None);
         assert_eq!(t.rotation, Rotation::Upright);
     }
 
