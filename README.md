@@ -1,14 +1,15 @@
 # Primitive Terminal
 
 A shell for jailbroken Kindles, on grayscale e-ink. Type a command on the on-screen keyboard, run it, and read the
-output. It is a separate app of the [Primitive Launcher](../doannt-kindle-launcher), which starts it from its grid.
+output. It is standalone: it opens from the Kindle's library and needs no other app of this project. (Primitive
+Launcher's grid can start it too.)
 
 - **Shell.** One `/bin/sh` runs for the whole session, so `cd` and variables carry over. Output appears as it is
   printed. Stop (Ctrl-C) stops the running command.
 - **Keyboard.** The shared keyboard from `tools/` (the same one as Primitive Launcher and Primitive Browser), with
   the layers, Shift, Del and Run.
 - **Scrolling.** Swipe down for older output, swipe up for the newest.
-- **Leaving.** Back (the button, or the page button) returns to the launcher.
+- **Leaving.** Back (the button, or the page button) returns to the library, with the status bar back.
 
 ## Layout of the repo
 
@@ -18,7 +19,7 @@ crates/kt-core     the screen state: output lines, the command typed, scrolling,
 crates/kt-render   drawing: text with parley, shapes with vello_cpu, the keyboard in the shared look
 crates/kt-kindle   the Kindle binary: e-ink panel, touch and page buttons (copied from the launcher), the shell
 crates/kt-desktop  a driver for the Mac: runs the Mac's shell and writes screenshots, for testing
-deploy/            install-ssh.sh (copies over SSH) and Terminal.sh (the library entry the launcher lists)
+deploy/            install-ssh.sh (copies over SSH) and Terminal.sh (the library entry: status bar, launch, restore)
 scripts/           build-device.sh (patch bump, build, install)
 tools/             the shared keyboard, quick-settings figures and icons (a submodule)
 ```

@@ -5,7 +5,9 @@
 //!   type TEXT   type TEXT as keys (run the Go key with `go`)
 //!   go          run the typed line
 //!   wait MS     show the shell's output for MS milliseconds
-//!   stop        Ctrl-C, the Stop button
+//!   stop        Stop on the key bar (Ctrl-C)
+//!   turn        the Turn button: the screen upside down, or back
+//!   ctrl        the Ctrl key on the key bar (the next letter is a control character)
 //!   tap X Y     a tap in device pixels
 //!   swipe DY    a swipe (positive down), from the middle of the output
 //!   shot NAME   write NAME.png into the output folder
@@ -93,19 +95,24 @@ fn main() -> io::Result<()> {
             }
             "wait" => pump(&mut session, &mut term, arg.parse().unwrap_or(300)),
             "stop" => {
-                if term.handle(Input::Tap(
-                    (term.stop_button().x + 5) as f32,
-                    (term.stop_button().y + 5) as f32,
-                )) == Action::Interrupt
-                {
+                if term.bar_key(kt_core::BarKey::Stop) == Action::Interrupt {
                     session.interrupt()?;
                 }
+            }
+            "turn" => {
+                term.handle(Input::Tap(term.turn_button().x as f32 + 5.0, term.turn_button().y as f32 + 5.0));
+            }
+            "ctrl" => {
+                term.bar_key(kt_core::BarKey::Ctrl);
             }
             "tap" => {
                 let mut v = arg.split_whitespace().map(|s| s.parse::<f32>().unwrap_or(0.0));
                 let (x, y) = (v.next().unwrap_or(0.0), v.next().unwrap_or(0.0));
-                if let Action::Run(text) = term.handle(Input::Tap(x, y)) {
-                    session.write(text.as_bytes())?;
+                match term.handle(Input::Tap(x, y)) {
+                    Action::Run(text) => session.write(text.as_bytes())?,
+                    Action::Send(bytes) => session.write(&bytes)?,
+                    Action::Interrupt => session.interrupt()?,
+                    _ => {}
                 }
             }
             "swipe" => {

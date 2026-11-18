@@ -2,7 +2,7 @@
 //! and versions as Primitive Browser and Launcher). Chrome and text are pure black on pure white after
 //! `solidify`, so a page change does not flash; the keyboard uses the shared look (`primitive-keyboard`).
 
-use kt_core::{Rect, Terminal, PROMPT};
+use kt_core::{BarKey, Rect, Rotation, Terminal, PROMPT};
 use parley::{FontContext, FontWeight, LayoutContext, PositionedLayoutItem, StyleProperty};
 use primitive_keyboard::{style, KeyDef};
 use vello_cpu::{
@@ -191,18 +191,23 @@ impl Renderer {
         self.title(t);
         self.output(t);
         self.input(t);
+        self.key_bar(t);
         self.keyboard(t);
         self.ctx.flush();
         self.ctx.render(self.pixmap.as_mut(), &mut self.resources);
         let mut out: Vec<u8> = self.pixmap.data_as_u8_slice().iter().step_by(4).copied().collect();
         solidify(&mut out);
+        // Turned upside down, the whole picture is rotated 180 degrees: row-major, that is the buffer reversed.
+        if t.rotation == Rotation::UpsideDown {
+            out.reverse();
+        }
         out
     }
 
     fn title(&mut self, t: &Terminal) {
         self.text(Text { text: "Terminal", x: 40.0, y: 30.0, w: 600.0, size: 56.0, bold: true, align: Align::Start, gray: BLACK });
-        let stop = t.stop_button();
-        self.button(stop, "Stop", false);
+        let turn = t.turn_button();
+        self.button(turn, "Turn", false);
         let back = t.back_button();
         self.button(back, "Back", true);
         let bar = t.title_bar();
@@ -254,6 +259,24 @@ impl Renderer {
         self.text(Text { text: &shown, x, y, w: avail + 20.0, size: 34.0, bold: false, align: Align::Start, gray: BLACK });
         let caret_x = x + self.text_width(&shown, 34.0, false) + 2.0;
         self.fill(Rect { x: caret_x as i32, y: line.y + 22, w: 3, h: 46 }, BLACK);
+    }
+
+    /// The key bar above the keyboard: Ctrl (filled while it is on), Up, Down and Stop, in the keyboard's key look.
+    fn key_bar(&mut self, t: &Terminal) {
+        let bar = t.key_bar();
+        self.fill(Rect { x: 0, y: bar.y, w: bar.w, h: 2 }, 226);
+        for (key, r) in t.bar_keys() {
+            let (label, on) = match key {
+                BarKey::Ctrl => ("Ctrl", t.ctrl),
+                BarKey::Up => ("Up", false),
+                BarKey::Down => ("Down", false),
+                BarKey::Stop => ("Stop", false),
+            };
+            let (fill, ink) = if on { (style::INK_GRAY, WHITE) } else { (style::FILL_GRAY, style::INK_GRAY) };
+            let line = if on { style::INK_GRAY } else { style::BORDER_GRAY };
+            self.rounded_frame(r, style::RADIUS as f64, style::BORDER as i32, line, fill);
+            self.text(Text { text: label, x: r.x as f32, y: r.y as f32 + r.h as f32 / 2.0 - 22.0, w: r.w as f32, size: 34.0, bold: true, align: Align::Center, gray: ink });
+        }
     }
 
     fn keyboard(&mut self, t: &Terminal) {

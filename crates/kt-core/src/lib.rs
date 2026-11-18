@@ -1,16 +1,21 @@
-//! The terminal's screen state: the output lines, the command being typed, the scroll position, and what a tap or
-//! a swipe does. No shell and no device here: the driver runs the shell (`kt-engine`), sends what it prints to
-//! `feed`, and sends the command that `Action::Run` asks for.
+//! The terminal's screen state: the output lines, the command being typed, the key bar, the history, the scroll
+//! position, the screen's turn, and what a tap or a swipe does. No shell and no device here: the driver runs the
+//! shell (`kt-engine`), sends what it prints to `feed`, and sends what `Action` asks for.
+
+pub mod rotation;
 
 use primitive_keyboard::{Editor, Key, Layer, Press};
+pub use rotation::Rotation;
 
 /// The most output lines kept. The oldest go first.
 pub const MAX_LINES: usize = 2000;
-/// The most characters of one command.
+/// The most characters of one command, and how many past commands are kept for Up and Down.
 pub const MAX_COMMAND: usize = 200;
-/// The title strip at the top, and the line the command is typed on above the keyboard.
+pub const MAX_HISTORY: usize = 200;
+/// The title strip at the top, the line the command is typed on, and the key bar above the keyboard.
 pub const TITLE_H: i32 = 120;
 pub const INPUT_H: i32 = 96;
+pub const BAR_H: i32 = 96;
 /// The keyboard at the bottom: the same area as the launcher's and the browser's (`primitive-keyboard`).
 pub const KEYBOARD_H: i32 = primitive_keyboard::style::AREA_H as i32;
 /// The key that runs the command.
@@ -55,10 +60,24 @@ pub enum Action {
     Redraw,
     /// Send this line to the shell (it ends with a newline).
     Run(String),
+    /// Send these bytes to the shell as they are (a control character such as Ctrl-C).
+    Send(Vec<u8>),
     /// Stop the command that is running (Ctrl-C).
     Interrupt,
     /// Leave the terminal.
     Close,
+}
+
+/// The keys of the key bar, above the keyboard.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BarKey {
+    /// The next letter typed is sent as a control character (Ctrl-C, Ctrl-D, ...).
+    Ctrl,
+    /// The previous command, and the next one.
+    Up,
+    Down,
+    /// Ctrl-C: stops a command that is running (`top`, a long download).
+    Stop,
 }
 
 /// The terminal's state.
@@ -74,11 +93,29 @@ pub struct Terminal {
     pub command: Editor,
     /// How many lines the output is scrolled up from its newest line (0: at the bottom).
     pub scroll: usize,
+    /// Whether the screen is turned upside down. Set by the Turn button, or by the device's accelerometer.
+    pub rotation: Rotation,
+    /// Ctrl is on: the next letter is sent as a control character.
+    pub ctrl: bool,
+    /// Commands run, oldest first, and the one Up and Down show (None: the command being typed).
+    pub history: Vec<String>,
+    history_pos: Option<usize>,
 }
 
 impl Terminal {
     pub fn new(width: i32, height: i32) -> Terminal {
-        Terminal { width, height, lines: Vec::new(), partial: String::new(), command: Editor::new(MAX_COMMAND), scroll: 0 }
+        Terminal {
+            width,
+            height,
+            lines: Vec::new(),
+            partial: String::new(),
+            command: Editor::new(MAX_COMMAND),
+            scroll: 0,
+            rotation: Rotation::Upright,
+            ctrl: false,
+            history: Vec::new(),
+            history_pos: None,
+        }
     }
 
     // ----- layout -----
@@ -92,19 +129,40 @@ impl Terminal {
         Rect { x: self.width - 40 - 170, y: (TITLE_H - 80) / 2, w: 170, h: 80 }
     }
 
-    /// The Stop button, beside Back.
-    pub fn stop_button(&self) -> Rect {
+    /// The Turn button, beside Back: turns the screen upside down (or back).
+    pub fn turn_button(&self) -> Rect {
         let back = self.back_button();
-        Rect { x: back.x - 20 - 170, y: back.y, w: 170, h: back.h }
+        Rect { x: back.x - 20 - 170, y: back.y, w: back.w, h: back.h }
     }
 
     pub fn output_area(&self) -> Rect {
-        Rect { x: 0, y: TITLE_H, w: self.width, h: self.height - TITLE_H - INPUT_H - KEYBOARD_H }
+        Rect { x: 0, y: TITLE_H, w: self.width, h: self.height - TITLE_H - INPUT_H - BAR_H - KEYBOARD_H }
     }
 
     pub fn input_line(&self) -> Rect {
         let out = self.output_area();
         Rect { x: 0, y: out.bottom(), w: self.width, h: INPUT_H }
+    }
+
+    /// The key bar: Ctrl, Up, Down and Stop, in a row above the keyboard.
+    pub fn key_bar(&self) -> Rect {
+        let line = self.input_line();
+        Rect { x: 0, y: line.bottom(), w: self.width, h: BAR_H }
+    }
+
+    /// The key bar's keys, left to right, with their rectangles.
+    pub fn bar_keys(&self) -> Vec<(BarKey, Rect)> {
+        let bar = self.key_bar();
+        let (margin, gap) = (12, 10);
+        let each = (bar.w - 2 * margin - 3 * gap) / 4;
+        [BarKey::Ctrl, BarKey::Up, BarKey::Down, BarKey::Stop]
+            .into_iter()
+            .enumerate()
+            .map(|(i, key)| {
+                let x = bar.x + margin + i as i32 * (each + gap);
+                (key, Rect { x, y: bar.y + 12, w: each, h: bar.h - 24 })
+            })
+            .collect()
     }
 
     pub fn keyboard_area(&self) -> Rect {
@@ -172,8 +230,12 @@ impl Terminal {
                 if self.back_button().contains(x, y) {
                     return Action::Close;
                 }
-                if self.stop_button().contains(x, y) {
-                    return Action::Interrupt;
+                if self.turn_button().contains(x, y) {
+                    self.rotation = self.rotation.flipped();
+                    return Action::Redraw;
+                }
+                if let Some((key, _)) = self.bar_keys().into_iter().find(|(_, r)| r.contains(x, y)) {
+                    return self.bar_key(key);
                 }
                 if self.keyboard_area().contains(x, y) {
                     return match self.key_at(x, y) {
@@ -200,18 +262,68 @@ impl Terminal {
         }
     }
 
-    /// A key press on the keyboard. Go runs the command: it is echoed in the output, and sent to the shell.
+    /// A key of the key bar.
+    pub fn bar_key(&mut self, key: BarKey) -> Action {
+        match key {
+            BarKey::Ctrl => {
+                self.ctrl = !self.ctrl;
+                Action::Redraw
+            }
+            BarKey::Up => self.recall(true),
+            BarKey::Down => self.recall(false),
+            BarKey::Stop => Action::Interrupt,
+        }
+    }
+
+    /// Up (`older`) and Down: show a past command in the line, to be run again or changed.
+    fn recall(&mut self, older: bool) -> Action {
+        let len = self.history.len();
+        if len == 0 {
+            return Action::None;
+        }
+        let next = match (self.history_pos, older) {
+            (None, true) => Some(len - 1),
+            (Some(p), true) => Some(p.saturating_sub(1)),
+            (Some(p), false) if p + 1 < len => Some(p + 1),
+            (Some(_), false) => None,
+            (None, false) => return Action::None,
+        };
+        self.history_pos = next;
+        let text = next.map(|p| self.history[p].clone()).unwrap_or_default();
+        self.command.text = text.chars().take(MAX_COMMAND).collect();
+        self.command.caret = self.command.text.len();
+        Action::Redraw
+    }
+
+    /// A key press on the keyboard. Go runs the command: it is echoed in the output, kept in the history, and sent
+    /// to the shell. With Ctrl on, a letter is sent as its control character instead of being typed.
     pub fn press(&mut self, key: Key) -> Action {
         if key == Key::Go {
             let text = self.command.string();
             self.command = Editor::new(MAX_COMMAND);
             self.lines.push(format!("{PROMPT}{text}"));
             self.scroll = 0;
+            if !text.is_empty() && self.history.last() != Some(&text) {
+                self.history.push(text.clone());
+                if self.history.len() > MAX_HISTORY {
+                    self.history.remove(0);
+                }
+            }
+            self.history_pos = None;
             return Action::Run(format!("{text}\n"));
+        }
+        if let (true, Key::Char(c)) = (self.ctrl, key) {
+            if c.is_ascii_alphabetic() {
+                self.ctrl = false;
+                return Action::Send(vec![(c.to_ascii_lowercase() as u8) & 0x1f]);
+            }
         }
         match self.command.press(key) {
             Press::Nothing => Action::None,
-            _ => Action::Redraw,
+            _ => {
+                self.history_pos = None;
+                Action::Redraw
+            }
         }
     }
 
@@ -235,13 +347,23 @@ mod tests {
         ((r.x + r.w / 2) as f32, (r.y + r.h / 2) as f32)
     }
 
+    fn centre_bar(t: &Terminal, key: BarKey) -> (f32, f32) {
+        let (_, r) = t.bar_keys().into_iter().find(|(k, _)| *k == key).unwrap();
+        ((r.x + r.w / 2) as f32, (r.y + r.h / 2) as f32)
+    }
+
+    fn type_text(t: &mut Terminal, text: &str) {
+        for c in text.chars() {
+            let key = if c == ' ' { Key::Space } else { Key::Char(c) };
+            let (x, y) = centre_of(t, key);
+            t.handle(Input::Tap(x, y));
+        }
+    }
+
     #[test]
     fn typing_then_go_sends_the_line_and_echoes_it() {
         let mut t = term();
-        for c in ['l', 's'] {
-            let (x, y) = centre_of(&t, Key::Char(c));
-            assert_eq!(t.handle(Input::Tap(x, y)), Action::Redraw);
-        }
+        type_text(&mut t, "ls");
         assert_eq!(t.command.string(), "ls");
         let (x, y) = centre_of(&t, Key::Go);
         assert_eq!(t.handle(Input::Tap(x, y)), Action::Run("ls\n".into()));
@@ -250,10 +372,11 @@ mod tests {
     }
 
     #[test]
-    fn an_empty_run_sends_a_bare_newline() {
+    fn an_empty_run_sends_a_bare_newline_and_is_not_kept_in_history() {
         let mut t = term();
         assert_eq!(t.press(Key::Go), Action::Run("\n".into()));
         assert_eq!(t.lines, vec!["$ ".to_string()]);
+        assert!(t.history.is_empty());
     }
 
     #[test]
@@ -308,20 +431,64 @@ mod tests {
     }
 
     #[test]
-    fn back_closes_and_stop_interrupts() {
+    fn back_closes_and_turn_flips_the_screen() {
         let mut t = term();
         let b = t.back_button();
         assert_eq!(t.handle(Input::Tap(b.x as f32 + 5.0, b.y as f32 + 5.0)), Action::Close);
-        let s = t.stop_button();
-        assert_eq!(t.handle(Input::Tap(s.x as f32 + 5.0, s.y as f32 + 5.0)), Action::Interrupt);
         assert_eq!(t.handle(Input::Back), Action::Close);
+        let turn = t.turn_button();
+        assert_eq!(t.handle(Input::Tap(turn.x as f32 + 5.0, turn.y as f32 + 5.0)), Action::Redraw);
+        assert_eq!(t.rotation, Rotation::UpsideDown);
+        t.handle(Input::Tap(turn.x as f32 + 5.0, turn.y as f32 + 5.0));
+        assert_eq!(t.rotation, Rotation::Upright);
     }
 
     #[test]
-    fn the_shared_keyboard_is_at_the_bottom_and_the_output_above_the_input() {
+    fn stop_on_the_key_bar_interrupts_the_command() {
+        let mut t = term();
+        let (x, y) = centre_bar(&t, BarKey::Stop);
+        assert_eq!(t.handle(Input::Tap(x, y)), Action::Interrupt);
+    }
+
+    #[test]
+    fn ctrl_sends_the_next_letter_as_a_control_character() {
+        let mut t = term();
+        let (x, y) = centre_bar(&t, BarKey::Ctrl);
+        assert_eq!(t.handle(Input::Tap(x, y)), Action::Redraw);
+        assert!(t.ctrl);
+        let (x, y) = centre_of(&t, Key::Char('c'));
+        assert_eq!(t.handle(Input::Tap(x, y)), Action::Send(vec![0x03]), "Ctrl-C");
+        assert!(!t.ctrl, "Ctrl is off after one letter");
+        assert!(t.command.string().is_empty(), "the letter is not typed");
+    }
+
+    #[test]
+    fn up_and_down_recall_past_commands() {
+        let mut t = term();
+        type_text(&mut t, "echo a");
+        t.press(Key::Go);
+        type_text(&mut t, "echo b");
+        t.press(Key::Go);
+        let (ux, uy) = centre_bar(&t, BarKey::Up);
+        t.handle(Input::Tap(ux, uy));
+        assert_eq!(t.command.string(), "echo b");
+        t.handle(Input::Tap(ux, uy));
+        assert_eq!(t.command.string(), "echo a");
+        t.handle(Input::Tap(ux, uy));
+        assert_eq!(t.command.string(), "echo a", "stops at the oldest");
+        let (dx, dy) = centre_bar(&t, BarKey::Down);
+        t.handle(Input::Tap(dx, dy));
+        assert_eq!(t.command.string(), "echo b");
+        t.handle(Input::Tap(dx, dy));
+        assert!(t.command.string().is_empty(), "past the newest, the line is empty again");
+    }
+
+    #[test]
+    fn the_screen_has_the_key_bar_and_the_keyboard_at_the_bottom() {
         let t = term();
         assert_eq!(t.keyboard_area().bottom(), 1680);
-        assert_eq!(t.input_line().bottom(), t.keyboard_area().y);
+        assert_eq!(t.key_bar().bottom(), t.keyboard_area().y);
+        assert_eq!(t.input_line().bottom(), t.key_bar().y);
         assert_eq!(t.output_area().y, TITLE_H);
     }
 }
