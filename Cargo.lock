@@ -328,7 +328,7 @@ checksum = "913a7d294ad056474749152107309fdee3ec17d2482d1ab70fdc61a81c64b9a3"
 
 [[package]]
 name = "kt-core"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "kt-engine",
  "primitive-keyboard",
@@ -336,7 +336,7 @@ dependencies = [
 
 [[package]]
 name = "kt-desktop"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "kt-core",
  "kt-engine",
@@ -347,14 +347,14 @@ dependencies = [
 
 [[package]]
 name = "kt-engine"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "libc",
 ]
 
 [[package]]
 name = "kt-kindle"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "kt-core",
  "kt-engine",
@@ -364,7 +364,7 @@ dependencies = [
 
 [[package]]
 name = "kt-render"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "kt-core",
  "parley",
