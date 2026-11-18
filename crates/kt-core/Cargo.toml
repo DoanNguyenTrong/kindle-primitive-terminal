@@ -1,0 +1,10 @@
+[package]
+name = "kt-core"
+description = "The terminal's screen state: the output, the command being typed, and what taps and swipes do"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+kt-engine = { path = "../kt-engine" }
+primitive-keyboard = { path = "../../tools/crates/primitive-keyboard" }

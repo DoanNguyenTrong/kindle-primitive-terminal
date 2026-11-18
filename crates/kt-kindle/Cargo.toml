@@ -1,0 +1,16 @@
+[package]
+name = "kt-kindle"
+description = "Primitive Terminal on the Kindle: the e-ink screen, touch and the page buttons, and the Kindle's shell"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "kt-terminal"
+path = "src/main.rs"
+
+[dependencies]
+kt-core = { path = "../kt-core" }
+kt-engine = { path = "../kt-engine" }
+kt-render = { path = "../kt-render" }
+libc.workspace = true

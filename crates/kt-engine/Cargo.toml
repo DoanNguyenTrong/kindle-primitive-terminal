@@ -1,0 +1,9 @@
+[package]
+name = "kt-engine"
+description = "Shell engine: a shell on a pseudo-terminal, adapted from KOReader's terminal plugin"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+libc.workspace = true

@@ -1,0 +1,13 @@
+[package]
+name = "kt-desktop"
+description = "Desktop driver: runs the terminal on the Mac's shell and writes PNG screenshots, for testing"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+kt-engine = { path = "../kt-engine" }
+kt-core = { path = "../kt-core" }
+kt-render = { path = "../kt-render" }
+primitive-keyboard = { path = "../../tools/crates/primitive-keyboard" }
+png.workspace = true
