@@ -6,14 +6,13 @@ on:
 
 jobs:
   release:
-    # Pin the shared workflow to @v1 once that release is approved and exists.
-    uses: DoanNguyenTrong/kindle-primitive-build/.github/workflows/package.yml@main
+    uses: DoanNguyenTrong/kindle-primitive-build/.github/workflows/package.yml@9533d481058f4d67b29568f40b30017ddcb32c8e
     permissions:
       contents: write
     with:
       id: primitive-terminal
       dir: terminal
       binary-crate: kt-kindle
-      arches: armhf
+      arches: armhf,armel
       firmware-min: "5.16.3"
       docs-licence-file: LICENSE-DOCS

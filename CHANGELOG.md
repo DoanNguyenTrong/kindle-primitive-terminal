@@ -2,6 +2,11 @@
 
 Each device build gets a new patch version.
 
+## 0.1.8
+
+- Package the standalone Terminal for ARMHF and ARMEL.
+- Ship the AGPL software license and the separate documentation license.
+
 ## 0.1.3
 
 - The Turn button is gone. The screen turns with the Kindle, as the browser and the launcher do: the framework's
