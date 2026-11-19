@@ -1,0 +1,18 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  release:
+    # Pin the shared workflow to @v1 once that release is approved and exists.
+    uses: DoanNguyenTrong/kindle-primitive-build/.github/workflows/package.yml@main
+    permissions:
+      contents: write
+    with:
+      id: primitive-terminal
+      dir: terminal
+      binary-crate: kt-kindle
+      arches: armhf
+      firmware-min: "5.16.3"

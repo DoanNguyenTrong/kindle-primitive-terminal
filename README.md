@@ -20,7 +20,7 @@ crates/kt-render   drawing: text with parley, shapes with vello_cpu, the keyboar
 crates/kt-kindle   the Kindle binary: e-ink panel, touch and page buttons (copied from the launcher), the shell
 crates/kt-desktop  a driver for the Mac: runs the Mac's shell and writes screenshots, for testing
 deploy/            install-ssh.sh (copies over SSH) and Terminal.sh (the library entry: status bar, launch, restore)
-scripts/           build-device.sh (patch bump, build, install)
+scripts/           stage.sh (package files), build-device.sh (patch bump, build, install)
 tools/             the shared keyboard, quick-settings figures and icons (a submodule)
 ```
 
@@ -32,7 +32,7 @@ cargo build --release -p kt-kindle --target armv7-unknown-linux-musleabihf   # o
 printf 'type ls\ngo\nwait 400\nshot ls\nquit\n' | cargo run -p kt-desktop -- --out out   # screenshots on the Mac
 ```
 
-Install on the Kindle over Wi-Fi, with the launcher's SSH server running: `scripts/build-device.sh`.
+See [installation instructions](INSTALL.md) for USB, SSH and Store availability.
 
 ## Licence
 
