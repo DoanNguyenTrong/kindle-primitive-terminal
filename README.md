@@ -4,7 +4,7 @@
 
 # Primitive Terminal
 
-**A shell for jailbroken Kindle e-readers.**
+**A shell for PrimitiveOS on jailbroken Kindles.**
 
 [**Install guide**](INSTALL.md) · [**Changelog**](CHANGELOG.md) · [**Licence**](#licence)
 
@@ -31,15 +31,15 @@ Terminal opens from the Kindle library or the Primitive Launcher grid.
 
 - **One shell per session.** Working directory and shell variables carry over between commands. Output appears as
   the command runs. Tap **Stop** to send Ctrl-C.
-- **On-screen keyboard.** Use the shared Primitive keyboard with Shift, symbols, Del, Run, and a Ctrl key.
+- **On-screen keyboard.** Use the shared PrimitiveOS keyboard with Shift, symbols, Del, Run, and a Ctrl key.
 - **Scroll through output.** Swipe down for older lines and swipe up to move toward the latest output.
 - **Return to the library.** Tap **Back** or use the back page button to exit.
 
 ## Quick start
 
-On a jailbroken Kindle with library script support, unpack the USB package and merge its `terminal/` and
-`documents/` folders onto your Kindle drive. Open **Terminal** from the library or Launcher grid.
-[Install guide](INSTALL.md)
+After setting up PrimitiveOS, open **Store** from Primitive Launcher. Select **Primitive Terminal** under **Apps**
+and tap **Get**. Open **Terminal** from the Launcher grid. The [install guide](INSTALL.md) also covers the
+standalone USB package.
 
 ## Status
 
