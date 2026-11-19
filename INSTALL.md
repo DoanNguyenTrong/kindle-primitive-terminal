@@ -34,7 +34,8 @@ Use the same device build as above, then stage the installed files and run the s
 ```sh
 sh scripts/stage.sh armhf
 python3 ../doannt-kindle-build/scripts/package.py --id primitive-terminal --dir terminal \
-  --version 0.1.8 --arch armhf --stage build/stage --license LICENSE --install INSTALL.md --out dist
+  --version 0.1.8 --arch armhf --stage build/stage --license LICENSE \
+  --docs-license LICENSE-DOCS --install INSTALL.md --out dist
 ```
 
 Use the version in `Cargo.toml` when packaging another version.

@@ -16,3 +16,4 @@ jobs:
       binary-crate: kt-kindle
       arches: armhf
       firmware-min: "5.16.3"
+      docs-licence-file: LICENSE-DOCS
