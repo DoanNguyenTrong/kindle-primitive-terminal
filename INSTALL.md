@@ -1,9 +1,13 @@
 # Install Primitive Terminal
 
-Use Primitive Store when a Primitive Terminal listing is available. The USB package is also standalone and works on a
-Kindle Oasis 3 running firmware 5.18.2 with library script support already installed.
+## Install with Primitive Store
+
+When an approved Terminal listing is available, select it under **Apps** in Primitive Store and tap **Get**. Open
+Terminal from the app page or the Launcher grid. Apply later versions from **Updates**.
 
 ## Install over USB
+
+The USB package works on a Kindle Oasis 3 running firmware 5.18.2 with library script support already installed.
 
 1. Obtain `primitive-terminal-<version>-armhf.zip` and its `.sha256` file. If you built the package locally, both files
    are in `dist/`.
