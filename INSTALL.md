@@ -2,7 +2,7 @@
 
 ## Install with Store
 
-After [setting up PrimitiveOS](https://github.com/DoanNguyenTrong/kindle-primitive-launcher/blob/main/docs/INSTALL.md#first-time-setup-over-usb),
+After [setting up PrimitiveOS](https://github.com/PrimitiveOS/kindle-primitive-launcher/blob/main/docs/INSTALL.md#first-time-setup-over-usb),
 open **Store** from Primitive Launcher. Select **Primitive Terminal** under **Apps** and tap **Get**. Open Terminal
 from the app page or the Launcher grid. Apply later versions from **Updates**.
 
