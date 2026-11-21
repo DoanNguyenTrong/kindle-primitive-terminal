@@ -118,7 +118,15 @@ pub fn gesture(start: (f32, f32), end: (f32, f32), held: Duration) -> Option<Inp
     }
 }
 
-pub fn touch_loop(path: String, tx: Sender<Ev>) {
+/// The swipe that opens quick settings under Primitive Launcher: down from the top edge. The launcher's own rule
+/// (`opens_quick_settings` in kl-launcher; the status bar is 120 px, plus 40 px of slack).
+pub fn is_system_swipe(dx: f32, dy: f32, start_y: f32) -> bool {
+    dy > 150.0 && dy.abs() > dx.abs() * 1.5 && start_y <= 160.0
+}
+
+/// Read touches and send gestures. Under the launcher (`launcher`) the swipe down from the top edge is the
+/// launcher's (quick settings), so it is not sent.
+pub fn touch_loop(path: String, tx: Sender<Ev>, launcher: bool) {
     let mut file = match File::open(&path) {
         Ok(f) => f,
         Err(e) => return log(&format!("cannot open {path}: {e}")),
@@ -145,7 +153,9 @@ pub fn touch_loop(path: String, tx: Sender<Ev>) {
                 } else if active {
                     active = false;
                     if let Some(s) = start {
-                        if let Some(input) = gesture(s, last, down_at.elapsed()) {
+                        if launcher && is_system_swipe(last.0 - s.0, last.1 - s.1, s.1) {
+                            // The launcher's swipe: it opens quick settings over the terminal.
+                        } else if let Some(input) = gesture(s, last, down_at.elapsed()) {
                             let _ = tx.send(Ev::Input(input));
                         }
                     }
@@ -197,6 +207,15 @@ mod tests {
     fn upside_down_turns_touches() {
         assert_eq!(turn_point(0, 10.0, 20.0), (10.0, 20.0));
         assert_eq!(turn_point(2, 0.0, 0.0), (1263.0, 1679.0));
+    }
+
+    #[test]
+    fn the_system_swipe_is_down_from_the_top_edge_only() {
+        assert!(is_system_swipe(0.0, 400.0, 30.0));
+        assert!(!is_system_swipe(0.0, 400.0, 700.0), "a scroll in the output");
+        assert!(!is_system_swipe(0.0, -400.0, 30.0), "up is the terminal's");
+        assert!(!is_system_swipe(400.0, 20.0, 30.0), "sideways is the terminal's");
+        assert!(!is_system_swipe(0.0, 100.0, 30.0), "too short");
     }
 
     #[test]
