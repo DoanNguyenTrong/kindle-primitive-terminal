@@ -204,7 +204,7 @@ impl Renderer {
     fn title(&mut self, t: &Terminal) {
         self.text(Text { text: "Terminal", x: 40.0, y: 30.0, w: 600.0, size: 56.0, bold: true, align: Align::Start, gray: BLACK });
         let back = t.back_button();
-        self.button(back, "Back", true);
+        self.button(back, "Exit", true);
         let bar = t.title_bar();
         self.fill(Rect { x: 0, y: bar.bottom() - 4, w: bar.w, h: 4 }, BLACK);
     }

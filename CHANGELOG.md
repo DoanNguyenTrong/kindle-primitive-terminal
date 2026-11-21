@@ -2,6 +2,13 @@
 
 Each device build gets a new patch version.
 
+## 0.1.9
+
+- Under Primitive Launcher the terminal follows the system layer. It follows the launcher's light or dark mode, and
+  redraws the whole screen without a flash when the launcher asks (SIGUSR1, after a wake or a theme change). The
+  swipe down from the top edge opens the launcher's quick settings; the terminal no longer scrolls on it. Opened from
+  the Kindle library, the terminal works as before.
+
 ## 0.1.8
 
 - Package the standalone Terminal for ARMHF and ARMEL.
