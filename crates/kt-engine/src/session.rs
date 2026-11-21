@@ -272,6 +272,11 @@ impl Session {
         Ok(())
     }
 
+    /// Whether the shell has exited.
+    pub fn is_closed(&self) -> bool {
+        self.closed
+    }
+
     /// Read what the shell has written so far, without waiting. Sets the closed flag when the shell has exited.
     pub fn read_available(&mut self) -> io::Result<Vec<u8>> {
         let mut out = Vec::new();

@@ -1,0 +1,13 @@
+[package]
+name = "kt-app"
+description = "Primitive Terminal as an app-kit app: the terminal's state, its screen and its shell, behind the kit's App trait"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+kt-core = { path = "../kt-core" }
+kt-engine = { path = "../kt-engine" }
+kt-render = { path = "../kt-render" }
+primitive-app.workspace = true
+primitive-ui.workspace = true

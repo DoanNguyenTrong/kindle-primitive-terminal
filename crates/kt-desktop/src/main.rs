@@ -1,129 +1,122 @@
-//! Desktop driver for the terminal: runs the Mac's shell through `kt-engine`, types commands from a script on stdin,
-//! and writes PNG screenshots of the screen. For testing the screen and the shell without the Kindle.
+//! Desktop driver for the terminal: runs the terminal app (`kt-app`) on the Mac's shell through the app kit's lifecycle,
+//! so a tap, a swipe or a key does what it does on the Kindle, and writes PNG screenshots. For testing without the
+//! Kindle.
 //!
 //! Script lines (one per line on stdin):
-//!   type TEXT   type TEXT as keys (run the Go key with `go`)
-//!   go          run the typed line
-//!   wait MS     show the shell's output for MS milliseconds
-//!   stop        Stop on the key bar (Ctrl-C)
-//!   turned       the screen turned upside down (the Kindle's turn): not on the desktop
-//!   ctrl        the Ctrl key on the key bar (the next letter is a control character)
-//!   tap X Y     a tap in device pixels
-//!   swipe DY    a swipe (positive down), from the middle of the output
-//!   shot NAME   write NAME.png into the output folder
-//!   quit        end
+//!   type TEXT        type TEXT as keys (run the Go key with `go`)
+//!   go               run the typed line
+//!   wait MS          show the shell's output for MS milliseconds
+//!   stop             Stop on the key bar (Ctrl-C)
+//!   ctrl             the Ctrl key on the key bar (the next letter is a control character)
+//!   tap X Y          a tap in device pixels (the kit's lifecycle: the press, then the action)
+//!   pressed X Y NAME a screenshot of the screen as it is drawn while the tap at X Y is pressed, before its action
+//!   swipe DY         a swipe (positive down), from the middle of the output
+//!   shot NAME        write NAME.png into the output folder
+//!   quit             end
 
 use std::io::{self, BufRead, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use kt_core::{Action, Input, Terminal};
+use kt_app::TerminalApp;
+use kt_core::BarKey;
 use kt_engine::{Session, SessionConfig};
-use kt_render::Renderer;
-use primitive_keyboard::Key;
-
-const W: u32 = 1264;
-const H: u32 = 1680;
-/// The fonts: the same Noto Sans the Kindle apps use (`assets/fonts`).
-fn font_paths() -> Vec<String> {
-    let base = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fonts");
-    ["NotoSans-Regular.ttf", "NotoSans-Bold.ttf"].iter().map(|f| format!("{base}/{f}")).collect()
-}
-
-fn write_png(path: &PathBuf, gray: &[u8]) {
-    let file = std::fs::File::create(path).expect("create png");
-    let mut enc = png::Encoder::new(io::BufWriter::new(file), W, H);
-    enc.set_color(png::ColorType::Grayscale);
-    enc.set_depth(png::BitDepth::Eight);
-    enc.write_header().and_then(|mut w| w.write_image_data(gray)).expect("write png");
-    eprintln!("[shot] {}", path.display());
-}
-
-/// Read the shell's output for `ms`, feeding it to the screen.
-fn pump(session: &mut Session, term: &mut Terminal, ms: u64) {
-    let until = Instant::now() + Duration::from_millis(ms);
-    loop {
-        match session.read_available() {
-            Ok(bytes) if !bytes.is_empty() => term.feed(&bytes),
-            Ok(_) => {}
-            Err(e) => {
-                eprintln!("[shell] read failed: {e}");
-                break;
-            }
-        }
-        if Instant::now() >= until {
-            break;
-        }
-        std::thread::sleep(Duration::from_millis(15));
-    }
-}
+use primitive_app::{font_paths, frame, write_png, App, Change, Lifecycle, HEIGHT, WIDTH};
+use primitive_ui::{Canvas, Input, Key};
 
 fn key_for(c: char) -> Key {
     if c == ' ' { Key::Space } else { Key::Char(c) }
 }
 
-fn main() -> io::Result<()> {
+/// Read the shell's output for `ms`, showing it on the screen (the app's own tick reads the shell).
+fn pump(app: &mut TerminalApp, ms: u64) {
+    let until = Instant::now() + Duration::from_millis(ms);
+    while Instant::now() < until {
+        app.tick(Instant::now());
+        std::thread::sleep(Duration::from_millis(15));
+    }
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let out = PathBuf::from(std::env::args().skip_while(|a| a != "--out").nth(1).unwrap_or_else(|| "out".into()));
     std::fs::create_dir_all(&out)?;
-    let mut renderer = Renderer::new(W, H, &font_paths()).expect("fonts");
-    let mut term = Terminal::new(W as i32, H as i32);
+    let fonts = font_paths(Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fonts")));
+    let mut canvas = Canvas::new(WIDTH, HEIGHT, &fonts)?;
     let config = SessionConfig { shell: "/bin/sh".into(), ..SessionConfig::default() };
-    let mut session = Session::spawn(&config)?;
-    // The terminal shows what the shell prints, so the shell's own echo is turned off (the terminal echoes the
-    // command itself).
-    session.write(b"stty -echo\n")?;
-    pump(&mut session, &mut term, 300);
-    term.lines.clear();
-    term.partial.clear();
+    let session = Session::spawn(&config)?;
+    let mut app = TerminalApp::new(session, WIDTH as i32, HEIGHT as i32)?;
+    let mut lifecycle = Lifecycle::default();
+    let on_error = |error: io::Error| eprintln!("[save] {error}");
+    pump(&mut app, 100);
+    app.term.lines.clear();
+    app.term.partial.clear();
 
     for line in io::stdin().lock().lines() {
         let line = line?;
         let mut parts = line.splitn(2, ' ');
         let cmd = parts.next().unwrap_or("");
         let arg = parts.next().unwrap_or("");
+        let mut exit = false;
         match cmd {
             "" => {}
             "type" => {
                 for c in arg.chars() {
-                    term.press(key_for(c));
+                    let action = app.term.press(key_for(c));
+                    app.act(action);
                 }
             }
             "go" => {
-                if let Action::Run(text) = term.press(Key::Go) {
-                    session.write(text.as_bytes())?;
-                }
+                let action = app.term.press(Key::Go);
+                app.act(action);
             }
-            "wait" => pump(&mut session, &mut term, arg.parse().unwrap_or(300)),
+            "wait" => pump(&mut app, arg.parse().unwrap_or(300)),
             "stop" => {
-                if term.bar_key(kt_core::BarKey::Stop) == Action::Interrupt {
-                    session.interrupt()?;
-                }
+                let action = app.term.bar_key(BarKey::Stop);
+                app.act(action);
             }
             "ctrl" => {
-                term.bar_key(kt_core::BarKey::Ctrl);
+                app.term.bar_key(BarKey::Ctrl);
             }
             "tap" => {
-                let mut v = arg.split_whitespace().map(|s| s.parse::<f32>().unwrap_or(0.0));
-                let (x, y) = (v.next().unwrap_or(0.0), v.next().unwrap_or(0.0));
-                match term.handle(Input::Tap(x, y)) {
-                    Action::Run(text) => session.write(text.as_bytes())?,
-                    Action::Send(bytes) => session.write(&bytes)?,
-                    Action::Interrupt => session.interrupt()?,
-                    _ => {}
+                let (x, y) = coords(arg);
+                exit = lifecycle.input(&mut app, Input::Tap(x, y), on_error) == Change::Exit;
+            }
+            "pressed" => {
+                let mut v = arg.split_whitespace();
+                let x: f32 = v.next().and_then(|s| s.parse().ok()).unwrap_or(0.0);
+                let y: f32 = v.next().and_then(|s| s.parse().ok()).unwrap_or(0.0);
+                let name = v.next().unwrap_or("pressed");
+                match lifecycle.press_feedback(&app, &mut canvas, Input::Tap(x, y), false) {
+                    Some(pressed) => {
+                        write_png(&out.join(format!("{name}.png")), WIDTH, HEIGHT, &pressed)?;
+                        eprintln!("[shot] {name}");
+                    }
+                    None => eprintln!("[shot] nothing is pressed at {x} {y}"),
                 }
             }
             "swipe" => {
                 let dy: f32 = arg.parse().unwrap_or(0.0);
-                term.handle(Input::Swipe { dy, start_y: 400.0 });
+                let swipe = Input::Swipe { dx: 0.0, dy, start_y: 400.0 };
+                exit = lifecycle.swipe(&mut app, swipe, 600.0, on_error) == Change::Exit;
             }
             "shot" => {
-                let gray = renderer.draw(&term);
-                write_png(&out.join(format!("{arg}.png")), &gray);
+                let gray = frame(&app, &mut canvas, false);
+                write_png(&out.join(format!("{arg}.png")), WIDTH, HEIGHT, &gray)?;
+                eprintln!("[shot] {arg}");
             }
             "quit" => break,
             other => eprintln!("[script] unknown line: {other}"),
         }
         io::stdout().flush()?;
+        if exit {
+            eprintln!("[kt] the terminal closed");
+            break;
+        }
     }
     Ok(())
+}
+
+fn coords(arg: &str) -> (f32, f32) {
+    let mut v = arg.split_whitespace().map(|s| s.parse::<f32>().unwrap_or(0.0));
+    (v.next().unwrap_or(0.0), v.next().unwrap_or(0.0))
 }

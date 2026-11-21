@@ -7,4 +7,6 @@ license.workspace = true
 
 [dependencies]
 kt-engine = { path = "../kt-engine" }
+kl-core = { path = "../../tools/crates/kl-core" }
 primitive-keyboard = { path = "../../tools/crates/primitive-keyboard" }
+primitive-ui = { path = "../../tools/crates/primitive-ui" }

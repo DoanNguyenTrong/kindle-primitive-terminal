@@ -1,12 +1,11 @@
 [package]
 name = "kt-render"
-description = "Draws the terminal's screen into an 8-bit gray buffer: text with parley, shapes with vello_cpu"
+description = "Draws the terminal's screen with the app kit's canvas: the output, the command line, the key bar and the keyboard"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [dependencies]
 primitive-keyboard = { path = "../../tools/crates/primitive-keyboard" }
+primitive-ui = { path = "../../tools/crates/primitive-ui" }
 kt-core = { path = "../kt-core" }
-vello_cpu.workspace = true
-parley.workspace = true

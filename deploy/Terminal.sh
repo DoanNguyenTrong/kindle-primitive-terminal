@@ -47,7 +47,13 @@ if [ "$LAUNCHED" != 1 ]; then
 fi
 
 log "start"
-env KT_DIR="$DIR" ./kt-terminal >> "$LOG" 2>&1
+# The app kit reads its fonts from the launcher's folder (KL_DIR). Opened without the launcher, the terminal's own
+# fonts/ (in this folder) are the ones to use, so the folder is pointed at this one.
+if [ "$LAUNCHED" = 1 ]; then
+    env KT_DIR="$DIR" ./kt-terminal >> "$LOG" 2>&1
+else
+    env KT_DIR="$DIR" KL_DIR="$DIR" ./kt-terminal >> "$LOG" 2>&1
+fi
 status=$?
 log "exit $status"
 
