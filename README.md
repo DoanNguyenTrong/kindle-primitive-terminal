@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="icon.png" alt="Primitive Terminal icon" width="110">
+
 # Primitive Terminal
 
 **Run shell commands on Kindle**
@@ -11,7 +13,9 @@
 [![Stars](https://img.shields.io/github/stars/PrimitiveOS/kindle-primitive-terminal?style=social)](https://github.com/PrimitiveOS/kindle-primitive-terminal/stargazers)
 [![Store downloads](https://img.shields.io/endpoint?url=https%3A%2F%2Fprimitiveos.github.io%2Fkindle-primitive-catalog%2Fv1%2Fbadges%2Fprimitive-terminal.json)](https://primitiveos.github.io/kindle-primitive-catalog/v1/index.json)
 
-[**Download**](https://github.com/PrimitiveOS/kindle-primitive-terminal/releases/latest) · [**Install guide**](INSTALL.md) · [**Changelog**](CHANGELOG.md)
+[**Download**](https://github.com/PrimitiveOS/kindle-primitive-terminal/releases/latest) ·
+[**Install guide**](INSTALL.md) ·
+[**Changelog**](CHANGELOG.md)
 
 </div>
 
