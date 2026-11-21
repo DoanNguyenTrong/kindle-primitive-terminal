@@ -1,19 +1,23 @@
 <div align="center">
 
-<img src="assets/terminal-icon.png" alt="Primitive Terminal icon" width="110">
-
 # Primitive Terminal
 
-**A shell for PrimitiveOS on jailbroken Kindles.**
+**Run shell commands on Kindle**
 
-[**Install guide**](INSTALL.md) · [**Changelog**](CHANGELOG.md) · [**Licence**](#licence)
+[![Release](https://img.shields.io/github/v/release/PrimitiveOS/kindle-primitive-terminal?label=release)](https://github.com/PrimitiveOS/kindle-primitive-terminal/releases) [![Licence: AGPL-3.0-only](https://img.shields.io/badge/licence-AGPL--3.0--only-blue)](LICENSE) [![Store downloads](https://img.shields.io/badge/Store%20downloads-39-brightgreen)](https://primitiveos.github.io/kindle-primitive-catalog/v1/index.json)
+
+[**Download**](https://github.com/PrimitiveOS/kindle-primitive-terminal/releases/latest) · [**Install guide**](INSTALL.md) · [**Changelog**](CHANGELOG.md)
 
 </div>
 
 ---
 
-Type a shell command on the on-screen keyboard and read its output on the Kindle's grayscale display.
-Terminal opens from the Kindle library or the Primitive Launcher grid.
+Type a shell command on the on-screen keyboard and read its output. Primitive Terminal opens from the Kindle library and can also run from Primitive Launcher.
+
+## Quick start
+
+After setting up PrimitiveOS, open **Store** from Primitive Launcher. Choose **Primitive Terminal** under **Apps**,
+tap **Get**, and open it from the Launcher grid. The [install guide](INSTALL.md) also covers the standalone USB package.
 
 ## Screenshots
 
@@ -35,33 +39,22 @@ Terminal opens from the Kindle library or the Primitive Launcher grid.
 - **Scroll through output.** Swipe down for older lines and swipe up to move toward the latest output.
 - **Return to the library.** Tap **Back** or use the back page button to exit.
 
-## Quick start
-
-After setting up PrimitiveOS, open **Store** from Primitive Launcher. Select **Primitive Terminal** under **Apps**
-and tap **Get**. Open **Terminal** from the Launcher grid. The [install guide](INSTALL.md) also covers the
-standalone USB package.
-
 ## Status
 
-The ARMHF and ARMEL candidates passed the Mac package checks. See the install guide for the Oasis 3 setup
-and the available installation paths.
+| Device | Status |
+|---|---|
+| Kindle Oasis 3 (1264 × 1680, firmware 5.18.2) | Tested on hardware |
 
-<details>
-<summary><b>Build and test from source</b></summary>
+**Current version: 0.1.9.** Changes are in [CHANGELOG.md](CHANGELOG.md).
 
-```sh
-git submodule update --init --recursive
-cargo test --locked --workspace
-cargo zigbuild --locked --release -p kt-kindle --target armv7-unknown-linux-musleabihf
-printf 'type echo Hello\ngo\nwait 400\nshot hello\nquit\n' | cargo run --locked -p kt-desktop -- --out out
-```
+## Downloads
 
-`kt-engine` runs the shell through a pseudo-terminal. `kt-core` handles input, output, and scrolling, and
-`kt-render` draws those states with parley and vello_cpu. `kt-kindle` runs on the device and `kt-desktop`
-captures PNGs from the desktop build. The library entry and SSH installer live in `deploy/`, with packaging in
-`scripts/` and shared components in `tools/`.
+**39 downloads** from Store, as of 2026-11-21. Store shows the same count on the app page.
+The count is GitHub downloads of this app's release packages, from the [Store catalog](https://primitiveos.github.io/kindle-primitive-catalog/v1/index.json).
 
-</details>
+## Documentation
+
+[Install guide](INSTALL.md) · [Changelog](CHANGELOG.md)
 
 ## Licence
 
