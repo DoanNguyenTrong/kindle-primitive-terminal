@@ -1,14 +1,17 @@
 [workspace]
 resolver = "2"
-members = ["crates/kt-engine", "crates/kt-core", "crates/kt-render", "crates/kt-kindle", "crates/kt-desktop"]
+members = ["crates/kt-engine", "crates/kt-core", "crates/kt-render", "crates/kt-app", "crates/kt-kindle", "crates/kt-desktop"]
 
 [workspace.package]
-version = "0.1.10"
+version = "0.2.0"
 edition = "2021"
 license = "AGPL-3.0-only"
 
 [workspace.dependencies]
-# Same pinned versions as Primitive Browser and Primitive Launcher, so the offline crate cache has them.
+# The app kit, from the tools submodule (the same crates the other Primitive apps use). The kit takes its pinned
+# versions from this workspace, so keep these equal to the tools workspace's.
+primitive-app = { path = "tools/crates/primitive-app" }
+primitive-ui = { path = "tools/crates/primitive-ui" }
 vello_cpu = { version = "0.3", default-features = false, features = ["std", "text", "u8_pipeline"] }
 parley = { version = "=0.12.0", default-features = false, features = ["std"] }
 png = "0.17"

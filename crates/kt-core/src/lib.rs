@@ -1,11 +1,10 @@
 //! The terminal's screen state: the output lines, the command being typed, the key bar, the history, the scroll
-//! position, the screen's turn, and what a tap or a swipe does. No shell and no device here: the driver runs the
-//! shell (`kt-engine`), sends what it prints to `feed`, and sends what `Action` asks for.
-
-pub mod rotation;
+//! position, and what a tap or a swipe does. No shell and no device here: the app (`kt-app`) runs the shell
+//! (`kt-engine`), sends what it prints to `feed`, and does what `Action` asks for. The screen turns, goes dark and
+//! shows taps through the app kit.
 
 use primitive_keyboard::{Editor, Key, Layer, Press};
-pub use rotation::Rotation;
+pub use kl_core::Rect;
 
 /// The most output lines kept. The oldest go first.
 pub const MAX_LINES: usize = 2000;
@@ -13,7 +12,7 @@ pub const MAX_LINES: usize = 2000;
 pub const MAX_COMMAND: usize = 200;
 pub const MAX_HISTORY: usize = 200;
 /// The title strip at the top, the line the command is typed on, and the key bar above the keyboard.
-pub const TITLE_H: i32 = 120;
+pub const TITLE_H: i32 = 160;
 pub const INPUT_H: i32 = 96;
 pub const BAR_H: i32 = 96;
 /// The keyboard at the bottom: the same area as the launcher's and the browser's (`primitive-keyboard`).
@@ -22,25 +21,6 @@ pub const KEYBOARD_H: i32 = primitive_keyboard::style::AREA_H as i32;
 pub const GO_LABEL: &str = "Run";
 /// The prompt written before each command in the output.
 pub const PROMPT: &str = "$ ";
-
-/// A rectangle in screen pixels.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Rect {
-    pub x: i32,
-    pub y: i32,
-    pub w: i32,
-    pub h: i32,
-}
-
-impl Rect {
-    pub fn contains(&self, x: f32, y: f32) -> bool {
-        x >= self.x as f32 && x < (self.x + self.w) as f32 && y >= self.y as f32 && y < (self.y + self.h) as f32
-    }
-
-    pub fn bottom(&self) -> i32 {
-        self.y + self.h
-    }
-}
 
 /// What the device gives the terminal.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -93,12 +73,8 @@ pub struct Terminal {
     pub command: Editor,
     /// How many lines the output is scrolled up from its newest line (0: at the bottom).
     pub scroll: usize,
-    /// Whether the screen is turned upside down: the Kindle's turn (auto-rotation, as the browser and the launcher).
-    pub rotation: Rotation,
     /// Ctrl is on: the next letter is sent as a control character.
     pub ctrl: bool,
-    /// The key under the finger, drawn in the on look until its action runs (see `press_feedback`).
-    pub pressed: Option<Rect>,
     /// Commands run, oldest first, and the one Up and Down show (None: the command being typed).
     pub history: Vec<String>,
     history_pos: Option<usize>,
@@ -113,9 +89,7 @@ impl Terminal {
             partial: String::new(),
             command: Editor::new(MAX_COMMAND),
             scroll: 0,
-            rotation: Rotation::Upright,
             ctrl: false,
-            pressed: None,
             history: Vec::new(),
             history_pos: None,
         }
@@ -127,15 +101,9 @@ impl Terminal {
         Rect { x: 0, y: 0, w: self.width, h: TITLE_H }
     }
 
-    /// The Back button, at the right of the title strip.
+    /// The Exit button, at the right of the title strip: the app kit's header button.
     pub fn back_button(&self) -> Rect {
-        Rect { x: self.width - 40 - 170, y: (TITLE_H - 80) / 2, w: 170, h: 80 }
-    }
-
-    /// The Turn button, beside Back: turns the screen upside down (or back).
-    pub fn turn_button(&self) -> Rect {
-        let back = self.back_button();
-        Rect { x: back.x - 20 - 170, y: back.y, w: back.w, h: back.h }
+        primitive_ui::back_button(self.width)
     }
 
     pub fn output_area(&self) -> Rect {
@@ -226,24 +194,7 @@ impl Terminal {
     // ----- input -----
 
     /// Handle a device input.
-    /// A tap on a key (the keyboard or the key bar), or on the Exit button, marks it as pressed, so the driver can show
-    /// it before its action runs. Returns whether anything was marked; `handle` clears the mark.
-    pub fn press_feedback(&mut self, input: Input) -> bool {
-        let Input::Tap(x, y) = input else { return false };
-        let bar = self.bar_keys().into_iter().find(|(_, r)| r.contains(x, y)).map(|(_, r)| r);
-        let keyboard = self.keys().into_iter().find(|(_, r)| r.contains(x, y)).map(|(_, r)| r);
-        let back = Some(self.back_button()).filter(|r| r.contains(x, y));
-        match bar.or(keyboard).or(back) {
-            Some(r) => {
-                self.pressed = Some(r);
-                true
-            }
-            None => false,
-        }
-    }
-
     pub fn handle(&mut self, input: Input) -> Action {
-        self.pressed = None;
         match input {
             Input::Back => Action::Close,
             Input::Tap(x, y) => {
@@ -455,16 +406,6 @@ mod tests {
     }
 
     #[test]
-    fn the_screen_turns_only_with_the_kindle() {
-        let mut t = term();
-        let b = t.back_button();
-        // A tap where a Turn button would be does nothing: the turn follows the Kindle.
-        let x = (b.x - 100) as f32;
-        assert_eq!(t.handle(Input::Tap(x, b.y as f32 + 5.0)), Action::None);
-        assert_eq!(t.rotation, Rotation::Upright);
-    }
-
-    #[test]
     fn stop_on_the_key_bar_interrupts_the_command() {
         let mut t = term();
         let (x, y) = centre_bar(&t, BarKey::Stop);
@@ -502,30 +443,6 @@ mod tests {
         assert_eq!(t.command.string(), "echo b");
         t.handle(Input::Tap(dx, dy));
         assert!(t.command.string().is_empty(), "past the newest, the line is empty again");
-    }
-
-    #[test]
-    fn a_tap_marks_its_key_pressed_until_the_action_runs() {
-        let mut t = term();
-        let (x, y) = centre_of(&t, Key::Char('q'));
-        assert!(t.press_feedback(Input::Tap(x, y)));
-        assert!(t.pressed.is_some());
-        t.handle(Input::Tap(x, y));
-        assert!(t.pressed.is_none(), "the action clears the mark");
-        let (x, y) = centre_bar(&t, BarKey::Up);
-        assert!(t.press_feedback(Input::Tap(x, y)), "the key bar marks too");
-        assert!(!t.press_feedback(Input::Tap(600.0, 300.0)), "the output marks nothing");
-    }
-
-    #[test]
-    fn the_exit_button_is_marked_pressed_too() {
-        let mut t = term();
-        let back = t.back_button();
-        let (x, y) = (back.x as f32 + back.w as f32 / 2.0, back.y as f32 + back.h as f32 / 2.0);
-        assert!(t.press_feedback(Input::Tap(x, y)));
-        assert_eq!(t.pressed, Some(back));
-        t.handle(Input::Tap(x, y));
-        assert!(t.pressed.is_none());
     }
 
     #[test]

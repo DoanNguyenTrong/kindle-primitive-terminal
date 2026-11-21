@@ -46,7 +46,8 @@ tap **Get**, and open it from the Launcher grid. The [install guide](INSTALL.md)
   the command runs. Tap **Stop** to send Ctrl-C.
 - **On-screen keyboard.** Use the shared PrimitiveOS keyboard with Shift, symbols, Del, Run, and a Ctrl key.
 - **Scroll through output.** Swipe down for older lines and swipe up to move toward the latest output.
-- **Return to the library.** Tap **Back** or use the back page button to exit.
+- **Return to the library.** Tap **Exit** or use the back page button to exit.
+- **Taps show.** A tap on a key, on **Exit**, or on the key bar reverses the control while it is held, as the rest of PrimitiveOS does.
 
 ## Status
 
@@ -54,7 +55,7 @@ tap **Get**, and open it from the Launcher grid. The [install guide](INSTALL.md)
 |---|---|
 | Kindle Oasis 3 (1264 × 1680, firmware 5.18.2) | Tested on hardware |
 
-**Current version: 0.1.9.** Changes are in [CHANGELOG.md](CHANGELOG.md).
+**Current version: 0.2.0.** Changes are in [CHANGELOG.md](CHANGELOG.md).
 
 ## Downloads
 
