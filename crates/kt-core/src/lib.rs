@@ -226,13 +226,14 @@ impl Terminal {
     // ----- input -----
 
     /// Handle a device input.
-    /// A tap on a key (the keyboard or the key bar) marks the key as pressed, so the driver can show it before the
-    /// key's action runs. Returns whether a key was marked; `handle` clears the mark.
+    /// A tap on a key (the keyboard or the key bar), or on the Exit button, marks it as pressed, so the driver can show
+    /// it before its action runs. Returns whether anything was marked; `handle` clears the mark.
     pub fn press_feedback(&mut self, input: Input) -> bool {
         let Input::Tap(x, y) = input else { return false };
         let bar = self.bar_keys().into_iter().find(|(_, r)| r.contains(x, y)).map(|(_, r)| r);
         let keyboard = self.keys().into_iter().find(|(_, r)| r.contains(x, y)).map(|(_, r)| r);
-        match bar.or(keyboard) {
+        let back = Some(self.back_button()).filter(|r| r.contains(x, y));
+        match bar.or(keyboard).or(back) {
             Some(r) => {
                 self.pressed = Some(r);
                 true
@@ -514,6 +515,17 @@ mod tests {
         let (x, y) = centre_bar(&t, BarKey::Up);
         assert!(t.press_feedback(Input::Tap(x, y)), "the key bar marks too");
         assert!(!t.press_feedback(Input::Tap(600.0, 300.0)), "the output marks nothing");
+    }
+
+    #[test]
+    fn the_exit_button_is_marked_pressed_too() {
+        let mut t = term();
+        let back = t.back_button();
+        let (x, y) = (back.x as f32 + back.w as f32 / 2.0, back.y as f32 + back.h as f32 / 2.0);
+        assert!(t.press_feedback(Input::Tap(x, y)));
+        assert_eq!(t.pressed, Some(back));
+        t.handle(Input::Tap(x, y));
+        assert!(t.pressed.is_none());
     }
 
     #[test]

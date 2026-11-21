@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.10
+
+- The Exit button is shown reversed while it is tapped, as the keys are.
+
 Each device build gets a new patch version.
 
 ## 0.1.9
