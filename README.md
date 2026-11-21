@@ -4,7 +4,12 @@
 
 **Run shell commands on Kindle**
 
-[![Release](https://img.shields.io/github/v/release/PrimitiveOS/kindle-primitive-terminal?label=release)](https://github.com/PrimitiveOS/kindle-primitive-terminal/releases) [![Licence: AGPL-3.0-only](https://img.shields.io/badge/licence-AGPL--3.0--only-blue)](LICENSE) [![Store downloads](https://img.shields.io/endpoint?url=https%3A%2F%2Fprimitiveos.github.io%2Fkindle-primitive-catalog%2Fv1%2Fbadges%2Fprimitive-terminal.json)](https://primitiveos.github.io/kindle-primitive-catalog/v1/index.json)
+[![CI](https://img.shields.io/github/actions/workflow/status/PrimitiveOS/kindle-primitive-terminal/ci.yml?branch=main&label=CI)](https://github.com/PrimitiveOS/kindle-primitive-terminal/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/PrimitiveOS/kindle-primitive-terminal?label=release)](https://github.com/PrimitiveOS/kindle-primitive-terminal/releases)
+[![Tag](https://img.shields.io/github/v/tag/PrimitiveOS/kindle-primitive-terminal?label=tag)](https://github.com/PrimitiveOS/kindle-primitive-terminal/tags)
+[![Licence: AGPL-3.0-only](https://img.shields.io/badge/licence-AGPL--3.0--only-blue)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/PrimitiveOS/kindle-primitive-terminal?style=social)](https://github.com/PrimitiveOS/kindle-primitive-terminal/stargazers)
+[![Store downloads](https://img.shields.io/endpoint?url=https%3A%2F%2Fprimitiveos.github.io%2Fkindle-primitive-catalog%2Fv1%2Fbadges%2Fprimitive-terminal.json)](https://primitiveos.github.io/kindle-primitive-catalog/v1/index.json)
 
 [**Download**](https://github.com/PrimitiveOS/kindle-primitive-terminal/releases/latest) · [**Install guide**](INSTALL.md) · [**Changelog**](CHANGELOG.md)
 
